@@ -1,5 +1,6 @@
 import re
-import sqlite3
+import os
+import psycopg2
 import tkinter as tk
 from PIL import Image, ImageTk
 from ttkbootstrap import Style
@@ -38,10 +39,10 @@ def open_main_window(logged_in_user):
     root.geometry("780x600")
 
     # Load images
-    logo_image = Image.open("logo.png")
+    logo_image = Image.open("C:/Users/joanm/Desktop/Noly/database tinker/logo.png")
     logo_photo = ImageTk.PhotoImage(logo_image)
 
-    other_image = Image.open("logo2.png")
+    other_image = Image.open("C:/Users/joanm/Desktop/Noly/database tinker/logo2.png")
     other_photo = ImageTk.PhotoImage(other_image)
 
     # Create a frame for the logo
@@ -129,25 +130,36 @@ password_entry.grid(row=2, column=1, padx=1, pady=5)
 style = Style(theme='litera')
 style.configure('TButton', font=('Segoe UI', 10, 'bold'))
 
+db_password = os.getenv('DATABASE_PASSWORD')
+
 def login(event=None):
-    # Connect to SQLite database
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
+    try:
+        # Connect to PostgreSQL database
+        conn = psycopg2.connect(
+            dbname='users',
+            user='postgres',
+            password=db_password,
+            host='localhost',
+            port='5432'
+        )
+        c = conn.cursor()
 
-    # Retrieve the password associated with the entered username
-    c.execute("SELECT * FROM users WHERE username=?", (username_entry.get(),))
-    user_data = c.fetchone()
+        # Retrieve the password associated with the entered username
+        c.execute("SELECT * FROM users WHERE username=%s", (username_entry.get(),))
+        user_data = c.fetchone()
 
-    # Close connection
-    conn.close()
+        # Close connection
+        conn.close()
 
-    # Check if the username exists and the entered password matches the stored password
-    if user_data and password_entry.get() == user_data[4]:  # Assuming password is stored at index 4
-        logged_in_user = f"Logged in as: {user_data[1]} {user_data[2]}"  # Assuming first name is stored at index 1 and last name at index 2
-        login_window.destroy()  # Close the login window
-        open_main_window(logged_in_user)  # Pass logged_in_user to the main window
-    else:
-        messagebox.showerror("Login Failed", "Incorrect username or password. Please try again.")
+        # Check if the username exists and the entered password matches the stored password
+        if user_data and password_entry.get() == user_data[4]:  # Assuming password is stored at index 4
+            logged_in_user = f"Logged in as: {user_data[1]} {user_data[2]}"  # Assuming first name is stored at index 1 and last name at index 2
+            login_window.destroy()  # Close the login window
+            open_main_window(logged_in_user)  # Pass logged_in_user to the main window
+        else:
+            messagebox.showerror("Login Failed", "Incorrect username or password. Please try again.")
+    except psycopg2.Error as e:
+        messagebox.showerror("Database Error", f"Error connecting to the database: {e}")
 
 # Login button
 login_button = ttk.Button(login_window, text="Login", command=login, style="TButton.Outline")
@@ -193,53 +205,62 @@ def signup():
     signup_button.grid(row=4, column=0, columnspan=2, padx=10, pady=5, sticky="WE")
 
 def signup_process(first_name, last_name, username, password, signup_window):
-    # Check if any field is empty
-    if not all([first_name, last_name, username, password]):
-        messagebox.showerror("Sign Up", "All fields are required. Please fill in all the fields.")
-        return
+    try:
+        # Check if any field is empty
+        if not all([first_name, last_name, username, password]):
+            messagebox.showerror("Sign Up", "All fields are required. Please fill in all the fields.")
+            return
 
-    # Check if password is at least 8 characters long
-    if len(password) < 8:
-        messagebox.showerror("Sign Up", "Password must be at least 8 characters long.")
-        return
+        # Check if password is at least 8 characters long
+        if len(password) < 8:
+            messagebox.showerror("Sign Up", "Password must be at least 8 characters long.")
+            return
 
-    # Check if password contains letters, numbers, and special characters
-    if not re.match(r'^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()-_+=~`[\]{}|\\:;"\'<>,.?/]).{8,}$', password):
-        messagebox.showerror("Sign Up", "Password must contain letters, numbers, and special characters.")
-        return
+        # Check if password contains letters, numbers, and special characters
+        if not re.match(r'^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()-_+=~`[\]{}|\\:;"\'<>,.?/]).{8,}$', password):
+            messagebox.showerror("Sign Up", "Password must contain letters, numbers, and special characters.")
+            return
 
-    # Capitalize the first letter of first name and last name
-    first_name = first_name.capitalize()
-    last_name = last_name.capitalize()
+        # Capitalize the first letter of first name and last name
+        first_name = first_name.capitalize()
+        last_name = last_name.capitalize()
 
-    # Connect to SQLite database
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
+        # Connect to PostgreSQL database
+        conn = psycopg2.connect(
+            dbname='users',
+            user='postgres',
+            password=db_password,
+            host='localhost',
+            port='5432'
+        )
+        c = conn.cursor()
 
-    # Check if the username already exists
-    c.execute("SELECT * FROM users WHERE username=?", (username,))
-    existing_user = c.fetchone()
+        # Check if the username already exists
+        c.execute("SELECT * FROM users WHERE username=%s", (username,))
+        existing_user = c.fetchone()
 
-    if existing_user:
-        messagebox.showerror("Sign Up", "Username already taken. Please choose another username.")
-    else:
-        # Insert new user with default 'admin' value of 'no'
-        c.execute("INSERT INTO users (first_name, last_name, username, password, admin) VALUES (?, ?, ?, ?, ?)", (first_name, last_name, username, password, 'no'))
-        
-        # Commit changes
-        conn.commit()
+        if existing_user:
+            messagebox.showerror("Sign Up", "Username already taken. Please choose another username.")
+        else:
+            # Insert new user with default 'admin' value of 'no'
+            c.execute("INSERT INTO users (first_name, last_name, username, password, admin) VALUES (%s, %s, %s, %s, %s)", (first_name, last_name, username, password, 'false'))
+            
+            # Commit changes
+            conn.commit()
 
-        # Print the contents of the users table
-        c.execute("SELECT * FROM users")
-        rows = c.fetchall()
-        print("Contents of the users table:")
-        for row in rows:
-            print(row)
+            # Print the contents of the users table
+            c.execute("SELECT * FROM users")
+            rows = c.fetchall()
+            print("Contents of the users table:")
+            for row in rows:
+                print(row)
 
-        conn.close()
+            conn.close()
 
-        messagebox.showinfo("Sign Up", "Sign up successful!")
-        signup_window.destroy()  # Close the signup window after successful signup
+            messagebox.showinfo("Sign Up", "Sign up successful!")
+            signup_window.destroy()  # Close the signup window after successful signup
+    except psycopg2.Error as e:
+        messagebox.showerror("Database Error", f"Error connecting to the database: {e}")
 
 signup_button = ttk.Button(login_window, text="Sign Up", width=13, command=signup, style="TButton.Outline")
 signup_button.grid(row=4, column=0, columnspan=2, padx=(20, 10), pady=5, sticky="ew")

@@ -1,17 +1,23 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-import sqlite3
+import psycopg2
 from ttkbootstrap import Style
 
 def create_users_table():
-    # Connect to SQLite database
-    conn = sqlite3.connect('users.db')
+    # Connect to PostgreSQL database
+    conn = psycopg2.connect(
+        dbname='users',
+        user='postgres',
+        password='Nolcubs0#',
+        host='localhost',
+        port='5432'
+    )
     c = conn.cursor()
 
     # Create the users table if it doesn't exist
     c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     first_name TEXT,
                     last_name TEXT,
                     username TEXT UNIQUE,
@@ -23,12 +29,18 @@ def create_users_table():
     conn.close()
 
 def login():
-    # Connect to SQLite database
-    conn = sqlite3.connect('users.db')
+    # Connect to PostgreSQL database
+    conn = psycopg2.connect(
+        dbname='users',
+        user='postgres',
+        password='Nolcubs0#',
+        host='localhost',
+        port='5432'
+    )
     c = conn.cursor()
 
     # Retrieve the password associated with the entered username
-    c.execute("SELECT password FROM users WHERE username=?", (username_entry.get(),))
+    c.execute("SELECT password, first_name, last_name FROM users WHERE username=%s", (username_entry.get(),))
     stored_password = c.fetchone()
 
     # Close connection
@@ -95,19 +107,25 @@ def signup_process(first_name, last_name, username, password, signup_window):
     first_name = first_name.capitalize()
     last_name = last_name.capitalize()
 
-    # Connect to SQLite database
-    conn = sqlite3.connect('users.db')
+    # Connect to PostgreSQL database
+    conn = psycopg2.connect(
+        dbname='users',
+        user='postgres',
+        password='Nolcubs0#',
+        host='localhost',
+        port='5432'
+    )
     c = conn.cursor()
 
     # Check if the username already exists
-    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    c.execute("SELECT * FROM users WHERE username=%s", (username,))
     existing_user = c.fetchone()
 
     if existing_user:
         messagebox.showerror("Sign Up", "Username already taken. Please choose another username.")
     else:
         # Insert new user
-        c.execute("INSERT INTO users (first_name, last_name, username, password) VALUES (?, ?, ?, ?)", (first_name, last_name, username, password))
+        c.execute("INSERT INTO users (first_name, last_name, username, password) VALUES (%s, %s, %s, %s)", (first_name, last_name, username, password))
         
         # Commit changes and close connection
         conn.commit()
@@ -119,8 +137,14 @@ def signup_process(first_name, last_name, username, password, signup_window):
 # Create the main Tkinter window for login
 
 def print_database_contents():
-    # Connect to SQLite database
-    conn = sqlite3.connect('users.db')
+    # Connect to PostgreSQL database
+    conn = psycopg2.connect(
+        dbname='users',
+        user='postgres',
+        password='Nolcubs0#',
+        host='localhost',
+        port='5432'
+    )
     c = conn.cursor()
 
     # Retrieve data from the users table

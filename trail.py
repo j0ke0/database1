@@ -7,7 +7,21 @@ def button1_clicked():
     label_text.set("An increasing trend in today's world is the emergence of the argument that topic. This will discuss the advantages")
 
 def button2_clicked():
-    label_text.set("Button 2 clicked")
+    # Connect to SQLite database
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+
+    # Execute a SELECT query to fetch all rows from the table
+    c.execute("SELECT * FROM inventory")
+    rows = c.fetchall()
+
+    # Close the connection
+    conn.close()
+
+    # Print the fetched data in the command line
+    print("All content of users.db:")
+    for row in rows:
+        print(f"ID: {row[0]}, Item Name: {row[1]}, Quantity: {row[2]}, Price: {row[3]}")
 
 def button3_clicked():
     label_text.set("Button 3 clicked")
@@ -83,7 +97,7 @@ def open_main_window(logged_in_user):
     style.theme_use('alt')
     style.configure('TButton', font=('Segoe UI', 10, 'bold'))
 
-    button1 = ttk.Button(button_frame, text="Add User", width=13, command=button1_clicked, style="TButton")
+    button1 = ttk.Button(button_frame, text="Edit User", width=13, command=button1_clicked, style="TButton")
     button2 = ttk.Button(button_frame, text="Remove User", width=13, command=button2_clicked, style="TButton")
     button3 = ttk.Button(button_frame, text="Access Control", width=13, command=button3_clicked, style="TButton")
     button4 = ttk.Button(button_frame, text="Add table", width=13, command=button4_clicked, style="TButton")
